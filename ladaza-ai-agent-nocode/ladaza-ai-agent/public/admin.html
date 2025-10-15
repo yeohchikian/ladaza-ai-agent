@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ladaza Agent 管理页 - 上传产品CSV</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;padding:24px;max-width:760px;margin:auto;background:#fafafa;color:#222}
+  h1{margin:0 0 16px}
+  .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,.04)}
+  input[type=file]{margin:12px 0}
+  button{background:#b58b6b;color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer}
+  pre{white-space:pre-wrap;background:#0b1020;color:#d6e2ff;padding:12px;border-radius:8px;overflow:auto;max-height:220px}
+  a{color:#0b5ed7;text-decoration:none}
+</style>
+</head>
+<body>
+  <h1>🧠 Ladaza Agent 管理页（零代码导入CSV）</h1>
+  <div class="card">
+    <p>步骤：选择你的 <b>CSV</b> 文件 → 点击 <b>开始上传</b>，系统会自动解析并写入知识库。</p>
+    <p>CSV 需要包含表头：<code>名称, 尺寸, 材质, 特点, 备注</code></p>
+    <input id="file" type="file" accept=".csv" />
+    <br/>
+    <button id="go">开始上传</button>
+    <p id="status"></p>
+    <pre id="log"></pre>
+    <p>返回聊天：<a href="/">首页</a></p>
+  </div>
+<script>
+const log = (t)=>{const el=document.getElementById('log'); el.textContent += t + "\n";};
+document.getElementById('go').onclick = async ()=>{
+  const f = document.getElementById('file').files[0];
+  if(!f){ alert('请选择一个CSV文件'); return; }
+  document.getElementById('status').textContent = '⏳ 解析中…';
+  const text = await f.text();
+  // 简单 CSV 解析（兼容逗号分隔）
+  const rows = text.split(/\r?\n/).filter(x=>x.trim().length);
+  const header = rows.shift().split(',');
+  const idx = (k)=> header.findIndex(h=>h.trim()===k);
+  const iName=idx('名称'), iSize=idx('尺寸'), iMat=idx('材质'), iFeat=idx('特点'), iNote=idx('备注');
+  if([iName,iSize,iMat,iFeat,iNote].some(i=>i<0)){
+    document.getElementById('status').textContent = '❌ CSV 表头不正确';
+    return;
+  }
+  const items=[];
+  for(const r of rows){
+    const cols = r.split(',');
+    const t = `${cols[iName] || ''} | 尺寸:${cols[iSize]||''} | 材质:${cols[iMat]||''} | 特点:${cols[iFeat]||''} | 备注:${cols[iNote]||''}`.trim();
+    if(t && t!=='| 尺寸: | 材质: | 特点: | 备注:') items.push(t);
+  }
+  log(`📦 即将上传 ${items.length} 条`);
+  document.getElementById('status').textContent = '🚀 上传中…';
+  try{
+    const res = await fetch('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+    const data = await res.json();
+    document.getElementById('status').textContent = '✅ 完成';
+    log(JSON.stringify(data,null,2));
+  }catch(e){
+    document.getElementById('status').textContent = '❌ 失败';
+    log(String(e));
+  }
+};
+</script>
+</body>
+</html>
