@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import os, uuid, time
 from typing import List, Optional
 from fastapi import FastAPI
@@ -78,3 +79,6 @@ async def chat(req: ChatRequest):
     ]
     answer = await llm(messages)
     return {"session_id": session_id, "answer": answer, "refs": topk}
+    # Serve static files from "public" folder at the root URL
+app.mount("/", StaticFiles(directory="public", html=True), name="public")
+
