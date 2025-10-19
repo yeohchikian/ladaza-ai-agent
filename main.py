@@ -81,4 +81,28 @@ async def chat(req: ChatRequest):
     return {"session_id": session_id, "answer": answer, "refs": topk}
     # Serve static files from "public" folder at the root URL
 app.mount("/", StaticFiles(directory="public", html=True), name="public")
+# ------- safe static mount: never crash if folder missing -------
+from pathlib import Path
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
+PUBLIC_DIR = Path("public")
+
+if PUBLIC_DIR.exists():
+    # 正常情况：根路径 / 显示 public/index.html
+    app.mount("/", StaticFiles(directory=str(PUBLIC_DIR), html=True), name="public")
+else:
+    # 兜底：没有 public 也能启动，并给出提示页
+    @app.get("/", response_class=HTMLResponse)
+    def _fallback():
+        return """
+        <!doctype html>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Ladaza Agent</title>
+        <h2>服务已运行 ✅（但缺少 public/index.html）</h2>
+        <p>请在仓库根目录创建 <code>public/index.html</code> 后再刷新。</p>
+        <p>健康检查：<a href="/health">/health</a></p>
+        """
+
 
