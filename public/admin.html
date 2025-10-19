@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ladaza Agent 管理页</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Arial;margin:0;background:#fafafa;color:#222;padding:24px;max-width:760px}
+  .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+  button{background:#b58b6b;color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer}
+  pre{background:#0b1020;color:#cfe2ff;padding:12px;border-radius:8px;overflow:auto}
+  a{color:#0b5ed7}
+</style>
+<h1>🧠 Ladaza Agent 管理页（上传 CSV）</h1>
+<div class="card">
+  <p>选择 CSV（表头必须是：<code>名称,尺寸,材质,特点,备注</code>）→ 点击上传</p>
+  <input id="file" type="file" accept=".csv" />
+  <button id="go">开始上传</button>
+  <p id="status"></p>
+  <pre id="log"></pre>
+  <p><a href="/">返回首页</a></p>
+</div>
+<script>
+  const log=t=>document.getElementById('log').textContent+=t+"\\n";
+  document.getElementById('go').onclick=async ()=>{
+    const f=document.getElementById('file').files[0]; if(!f){alert('请选择 CSV');return;}
+    const text=await f.text(); const rows=text.split(/\\r?\\n/).filter(x=>x.trim().length);
+    const header=rows.shift().split(','); const idx=k=>header.findIndex(h=>h.trim()===k);
+    const iN=idx('名称'),iS=idx('尺寸'),iM=idx('材质'),iF=idx('特点'),iR=idx('备注');
+    if([iN,iS,iM,iF,iR].some(i=>i<0)){document.getElementById('status').textContent='❌ CSV 表头不正确';return;}
+    const items=[]; for(const r of rows){const c=r.split(','); const t=`${c[iN]||''} | 尺寸:${c[iS]||''} | 材质:${c[iM]||''} | 特点:${c[iF]||''} | 备注:${c[iR]||''}`.trim(); if(t && t!=='| 尺寸: | 材质: | 特点: | 备注:') items.push(t);}
+    document.getElementById('status').textContent='🚀 上传中…'; log(`📦 ${items.length} 条`);
+    try{const res=await fetch('/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})}); const data=await res.json(); document.getElementById('status').textContent='✅ 完成'; log(JSON.stringify(data,null,2));}
+    catch(e){document.getElementById('status').textContent='❌ 失败'; log(String(e));}
+  };
+</script>
