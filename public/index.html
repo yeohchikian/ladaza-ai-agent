@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ladaza AI Chat</title>
+<style>
+  :root{--brand:#b58b6b;--bg:#f9f8f6}
+  body{font-family:system-ui,Segoe UI,Arial;margin:0;background:var(--bg)}
+  #chat-btn{position:fixed;bottom:24px;right:24px;background:var(--brand);color:#fff;border:0;border-radius:50%;width:60px;height:60px;font-size:28px;cursor:pointer}
+  #chat-box{display:none;flex-direction:column;position:fixed;bottom:100px;right:24px;width:360px;max-height:520px;background:#fff;border-radius:16px;box-shadow:0 6px 16px rgba(0,0,0,.2);overflow:hidden}
+  #header{background:var(--brand);color:#fff;padding:10px 14px;font-weight:700}
+  #body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+  .msg{padding:8px 12px;border-radius:12px;max-width:85%;line-height:1.4}
+  .msg.user{background:var(--brand);color:#fff;align-self:flex-end}
+  .msg.bot{background:#f7f7f7;color:#222;align-self:flex-start;border:1px solid #eee}
+  #input{display:flex;border-top:1px solid #eee}
+  #input textarea{flex:1;border:0;resize:none;outline:none;padding:10px}
+  #input button{background:var(--brand);color:#fff;border:0;padding:0 14px;cursor:pointer}
+</style>
+<h2 style="padding:16px">Ladaza AI Agent</h2>
+<button id="chat-btn">💬</button>
+<div id="chat-box">
+  <div id="header">💬 Ladaza AI Chat</div>
+  <div id="body"></div>
+  <div id="input">
+    <textarea id="msg" placeholder="询问家具规格、送货、颜色等…"></textarea>
+    <button id="send">发送</button>
+  </div>
+</div>
+<script>
+  const API="/chat", wa="https://wa.me/60177502689";
+  const b=document.getElementById("chat-btn"), box=document.getElementById("chat-box"),
+        body=document.getElementById("body"), send=document.getElementById("send"), msg=document.getElementById("msg");
+  const session=localStorage.getItem("ladaza_session")||crypto.randomUUID();localStorage.setItem("ladaza_session",session);
+  b.onclick=()=>box.style.display=box.style.display==="flex"?"none":"flex";
+  msg.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send.click();}});
+  function append(role,html,loading){const d=document.createElement('div');d.className=`msg ${role}`+(loading?" loading":"");d.innerHTML=html;body.appendChild(d);body.scrollTop=body.scrollHeight;}
+  send.onclick=async ()=>{
+    const t=msg.value.trim(); if(!t) return;
+    append('user', t); msg.value=''; send.disabled=true; append('bot','正在思考…',true);
+    try{
+      const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:t}],session_id:session})});
+      const d=await r.json(); document.querySelector('.msg.bot.loading').remove(); append('bot', d.answer.replace(/\\n/g,'<br>'));
+    }catch(e){
+      const l=document.querySelector('.msg.bot.loading'); if(l) l.remove();
+      append('bot', `出错，请稍后。<a href='${wa}' target='_blank'>联系真人客服</a>`);
+    }finally{ send.disabled=false; }
+  };
+  const hello=navigator.language.startsWith('zh')?'你好👋 我是 Ladaza AI 顾问，要了解哪款家具？':
+              navigator.language.startsWith('ms')?'Hai 👋 Saya ejen AI Ladaza. Ingin tahu tentang perabot kami?':
+              "Hi 👋 I'm Ladaza AI agent. Ask me anything about our furniture!";
+  append('bot', hello);
+</script>
